@@ -1,0 +1,91 @@
+---
+title: "QBS 103 Project submission 1"
+output: pdf_document
+date: "2024-07-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("/Users/kevinyang/Documents/QBS103/data")
+gene <- read.csv("QBS103_GSE157103_genes.csv")
+meta <- read.csv("QBS103_GSE157103_series_matrix.csv")
+```
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(ggpubr)
+```
+
+
+```{r}
+# merge the dataframe with selected gene
+
+gene_name <- "A1BG"
+gene_expression <- gene %>% 
+  filter(X == gene_name) %>% # select the column with the gene name
+  select(-X) %>% # get rid of X
+  t() %>% # transpose the data
+  as.numeric() # turn into a numeric vector 
+
+new_data <- data.frame(meta$participant_id, meta$geo_accession, meta$sex, meta$icu_status, meta$ventilator.free_days, gene_expression)
+```
+
+```{r}
+# histogram of gene expression
+# Create a data frame
+gene_expression_df <- data.frame(Expression = gene_expression)
+
+# Plot the histogram
+ggplot(gene_expression_df, aes(x = Expression)) +
+  geom_histogram(binwidth = 0.1, fill = "blue", color = "black", alpha = 0.7) +
+  ggtitle(paste("Histogram of Gene Expression for", gene_name)) +
+  xlab("Expression Value") +
+  ylab("Frequency") +
+  theme_classic()
+```
+
+```{r}
+
+# Scatterplot of gene expression and covariate 
+ggplot(new_data, aes(x = gene_expression, y = meta.ventilator.free_days)) +
+  geom_point(color = "blue", alpha = 0.7) +
+  ggtitle(paste("Scatterplot of", gene_name, "Expression vs", "Ventilator Free Days")) +
+  xlab("Gene Expression") +
+  ylab("Number of Ventilator Free Days") +
+  theme_minimal() + theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10)
+  )
+  
+```
+
+```{r}
+new_data <- new_data %>%
+  filter(meta.sex != " unknown")
+
+colors = c("orangered", "palegreen")
+# boxplot
+ggplot(new_data, aes(x = meta.sex, y = gene_expression, fill = meta.icu_status)) +
+  geom_boxplot() +
+  facet_wrap(~ meta.icu_status) +
+  scale_fill_manual(values = colors) + 
+  ggtitle(paste("Boxplot of", gene_name, "Expression by Sex and ICU Status")) +
+  xlab("Sex") +
+  ylab("Gene Expression") +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10)
+  )
+```
+
