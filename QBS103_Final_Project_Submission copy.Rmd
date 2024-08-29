@@ -1,0 +1,275 @@
+---
+title: "QBS 103 Project submission 2"
+output: pdf_document
+date: "2024-07-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("/Users/kevinyang/Documents/QBS103/data")
+genes <- read.csv("QBS103_GSE157103_genes.csv")
+meta <- read.csv("QBS103_GSE157103_series_matrix.csv")
+```
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(ggpubr)
+```
+
+
+```{r}
+# merge the dataframe with selected gene
+
+gene_name <- "A1BG"
+gene_expression <- genes %>% 
+  filter(X == gene_name) %>% # select the column with the gene name
+  select(-X) %>% # get rid of X
+  t() %>% # transpose the data
+  as.numeric() # turn into a numeric vector 
+
+new_data <- data.frame(meta$participant_id, meta$geo_accession, meta$sex, meta$icu_status, meta$ventilator.free_days, gene_expression)
+```
+
+```{r}
+# histogram of gene expression
+# Create a data frame
+gene_expression_df <- data.frame(Expression = gene_expression)
+
+# Plot the histogram
+my_hist <- ggplot(gene_expression_df, aes(x = Expression)) +
+  geom_histogram(binwidth = 0.1, fill = "blue", color = "black", alpha = 0.7) +
+  ggtitle(paste("Histogram of Gene Expression for", gene_name)) +
+  xlab("Expression Value") +
+  ylab("Frequency") +
+  theme_classic()
+ggsave("my_hist.pdf", plot=my_hist, width = 8, height = 6)
+```
+
+```{r}
+my_scatterplot <- ggplot(new_data, aes(x = gene_expression, y = meta.ventilator.free_days)) +
+geom_point(color = "blue", alpha = 0.7) +
+ggtitle(paste("Scatterplot of", gene_name, "Expression vs", "Ventilator Free Days")) +
+xlab("Gene Expression") +
+ylab("Number of Ventilator Free Days") +
+theme_minimal() + theme(
+legend.position = "bottom",
+plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+axis.title.x = element_text(size = 12, face = "bold"),
+axis.title.y = element_text(size = 12, face = "bold"),
+axis.text = element_text(size = 10)
+)
+ggsave("my_scatterplot.pdf", plot=my_scatterplot, width = 8, height = 6)
+  
+```
+```{r}
+new_data <- new_data %>%
+filter(meta.sex != " unknown")
+colors = c("orangered", "palegreen")
+# boxplot
+my_boxplot <- ggplot(new_data, aes(x = meta.sex, y = gene_expression, fill = meta.icu_status)) +
+geom_boxplot() +
+scale_fill_manual(values = colors) +
+ggtitle(paste("Boxplot of", gene_name, "Expression by Sex and ICU Status")) +
+xlab("Sex") +
+ylab("Gene Expression") +
+theme_minimal() +
+theme(
+legend.position = "bottom",
+plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+axis.title.x = element_text(size = 12, face = "bold"),
+axis.title.y = element_text(size = 12, face = "bold"),
+axis.text = element_text(size = 10)
+)
+ggsave("my_boxplot.pdf", plot=my_boxplot, width = 8, height = 6)
+```
+
+```{r}
+plotting <- function(data_name, genes_list, cts_var, cate_var1, cate_var2, genes) {
+  
+  for (gene in genes_list) {
+    # Create a data frame with the extracted gene expression data
+    data <- data.frame(
+      cate_var1 = data_name[,cate_var1],
+      cate_var2 = data_name[,cate_var2],
+      cts_var = data_name[,cts_var],
+      gene_expression = genes %>% 
+        filter(X == gene) %>% # Assuming 'X' is the column with gene names
+        select(-X) %>% # Remove the gene name column
+        t() %>% # Transpose the data
+        as.numeric() # Convert to numeric vector
+    )
+
+    # Plot 1: Histogram of Gene Expression
+    plot1 <- ggplot(data, aes(x = gene_expression)) +
+      geom_histogram(binwidth = 0.1, fill = "blue", color = "black", alpha = 0.7) +
+      ggtitle(paste("Histogram of Gene Expression for", gene)) +
+      xlab("Expression Value") +
+      ylab("Frequency") +
+      theme_minimal() + theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.title.x = element_text(size = 12, face = "bold"),
+        axis.title.y = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10)
+      )
+    print(plot1)
+    
+    # Plot 2: Scatterplot of Gene Expression vs Continuous Variable
+    plot2 <- ggplot(data, aes(x = gene_expression, y = cts_var)) +
+      geom_point(color = "blue", alpha = 0.7) +
+      ggtitle(paste("Scatterplot of", gene, "Expression vs", cts_var)) +
+      xlab("Gene Expression") +
+      ylab(cts_var) +
+      theme_minimal() + theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.title.x = element_text(size = 12, face = "bold"),
+        axis.title.y = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10)
+      )
+    print(plot2)
+    
+    # Plot 3: Boxplot of Gene Expression by Categorical Variables
+    colors <- c("orangered", "palegreen")
+    plot3 <- ggplot(data, aes(x = cate_var1, y = gene_expression, fill = cate_var2)) +
+      geom_boxplot() +
+      scale_fill_manual(values = colors) + 
+      ggtitle(paste("Boxplot of", gene, "Expression by", cate_var1, "and", cate_var2)) +
+      labs(fill = cate_var2) + 
+      xlab(cate_var1) +
+      ylab("Gene Expression") +
+     theme_minimal() +
+      theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.title.x = element_text(size = 12, face = "bold"),
+        axis.title.y = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10)
+      )
+    print(plot3)
+    
+    
+  }
+}
+
+genes_list <- c("A1BG","AACS","A2ML1")
+plotting(meta, genes_list, "ventilator.free_days", "sex", "icu_status", genes)
+```
+
+
+```{r}
+library(table1)
+library(dplyr)
+library(knitr)
+
+# data preprocessing
+# dropped a few cases where age is "89>" and ":"
+meta_filtered <- meta %>%
+  mutate(age = as.numeric(age)) %>%  # Convert 'age' to numeric 
+  filter(!is.na(age) & age == as.integer(age))  # Filter to keep only integer ages 
+
+meta_filtered <- meta_filtered %>%
+  filter(sex != " unknown")
+
+meta_filtered$sex <-
+  factor(meta_filtered$sex, levels=c(' female',' male'),
+         labels = c('Female','Male'))
+meta_filtered$mechanical_ventilation <-
+  factor(meta_filtered$mechanical_ventilation, levels = c(' yes',' no'),
+         labels = c("Present", "Absent"))
+
+label(meta_filtered$sex)       <- "Sex"
+label(meta_filtered$mechanical_ventilation)       <- "Mechanincal Ventilation"
+label(meta_filtered$age)       <- "Age"
+label(meta_filtered$hospital.free_days_post_45_day_followup)       <- "45 Days Followup Post Hospital"
+label(meta_filtered$ventilator.free_days)       <- "Ventilator Free Days"
+
+# Generate the table with customized text color
+custom_format <- c(
+  "Median [IQR]" = "MEDIAN [IQR]"
+)
+summary_table <- 
+  table1(~ mechanical_ventilation + sex 
+       + age + hospital.free_days_post_45_day_followup + ventilator.free_days 
+      | disease_status, 
+       data = meta_filtered, 
+       render.continuous = custom_format)
+
+df_summary <- as.data.frame(summary_table)
+
+latex_table <- kable(df_summary, format = "latex", booktabs = TRUE)
+
+#kable 
+```
+```{r}
+summary_table
+```
+
+
+```{r}
+# Remove non-numeric columns (e.g., 'X')
+genes_numeric <- genes[, sapply(genes, is.numeric)]
+
+# Proceed with variance calculation, ordering, and log2 transformation
+variance <- apply(genes_numeric, MARGIN = 1, FUN = var)
+genes_numeric <- genes_numeric[order(variance, decreasing = TRUE), ]
+log2.genes <- log2(genes_numeric )
+```
+
+
+```{r}
+library(pheatmap)
+# Subsetting meta_filtered to include only 'sex' and 'disease_status' columns
+new_genes <- genes[20:30,]
+rownames(new_genes) <- new_genes$X
+new_genes <- new_genes[,-1]
+
+annotationData <- data.frame(participant_id = factor(meta$participant_id),sex = factor(meta$sex), disease_status = factor(meta$disease_status))
+rownames(annotationData) <- annotationData[,1]
+annotationData <- annotationData[,-1]
+head(annotationData)
+
+# Define annotation colors (with matching keys to the cleaned subset_meta)
+annotationColor <- list(sex = c(' male' = 'green', ' female' = 'yellow',' unknown' = 'red'),
+                        disease_status = c('disease state: COVID-19' = 'skyblue',
+                                           'disease state: non-COVID-19' = 'orange'))
+my_heat <- pheatmap(new_genes,
+        clusters_cols = T,
+        cluster_rows = T,
+        annotation_col = annotationData,
+        annotation_colors = annotationColor,
+        show_colnames = FALSE,
+        )
+
+annotationData
+new_genes
+levels(annotationData$sex)
+ggsave("my_heat.pdf", plot=my_heat, width = 8, height = 6)
+```
+```{r}
+new_data <- new_data %>%
+filter(meta.sex != " unknown")
+colors = c("orangered", "palegreen")
+# boxplot
+my_violin <- ggplot(new_data, aes(x = meta.sex, y = gene_expression, fill = meta.icu_status)) +
+geom_violin() +
+scale_fill_manual(values = colors) +
+ggtitle(paste("Boxplot of A1BG Expression by Sex and ICU Status")) +
+xlab("Sex") +
+ylab("Gene Expression") +
+labs(fill = "ICU_Status")
+theme_minimal() +
+theme(
+legend.position = "bottom",
+plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+axis.title.x = element_text(size = 12, face = "bold"),
+axis.title.y = element_text(size = 12, face = "bold"),
+axis.text = element_text(size = 10)
+)
+
+ggsave("my_violin.pdf", plot=my_violin, width = 8, height = 6)
+```
